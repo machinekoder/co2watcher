@@ -6,6 +6,9 @@ from threading import Event, Lock, Thread
 
 from flask import Flask
 
+class ReadError(Exception):
+    pass
+
 class Co2Monitor:
     def __init__(self) -> None:
         self._device = None
@@ -19,12 +22,15 @@ class Co2Monitor:
         self._thread = None
     
     def _open(self):
-        print("Opening device")
+        print("Opening device...")
         vendor_id=0x04d9
         product_id=0xa052
         self._device = hid.device()
-        self._device.open(vendor_id, product_id)
-        self._device.send_feature_report([0x00, 0x00])  # Don't understand why we should send two 0 to put the device in read mode ...
+        try:
+            self._device.open(vendor_id, product_id)
+            self._device.send_feature_report([0x00, 0x00])  # Don't understand why we should send two 0 to put the device in read mode ...
+        except OSError as e:
+            raise ReadError("Opening device failed") from e
 
     def _read_data(self):
         """Read current data from device. Return only when the whole data set is ready.
@@ -74,18 +80,26 @@ class Co2Monitor:
 
     @staticmethod
     def _worker_thread(self):
-        self._open()
         while not self._stop_event.is_set():
-            data = self._read_data()
-            if not data:
-                break
-            timestamp, co2, temperature = data
-            with self._data_lock:
-                self._timestamp = timestamp
-                self._co2 = co2
-                self._temperature = temperature
-            print(f"read data {co2} {temperature}")
+            try:
+                self._open()
+                while not self._stop_event.is_set():
+                    self._read_loop()
+            except ReadError as e:
+                print(e)
+                time.sleep(3.0)
         self._exit()
+    
+    def _read_loop(self):
+        data = self._read_data()
+        if not data:
+            raise ReadError("Reading from device failed")
+        timestamp, co2, temperature = data
+        with self._data_lock:
+            self._timestamp = timestamp
+            self._co2 = co2
+            self._temperature = temperature
+        print(f"read data {co2} {temperature}")
     
     def _exit(self):
         print("Closing device")
