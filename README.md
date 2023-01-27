@@ -1,2 +1,2 @@
 # co2watcher
-Small Flask Server hosting TFA CO2 Monitor Data
+Small Utility for reading and publishing TFA Dostmann CO2 Monitor Data
