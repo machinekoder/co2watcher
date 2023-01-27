@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import paho.mqtt.client as mqtt
 
 from co2watcher import Co2Monitor
@@ -29,16 +31,25 @@ class Co2MonitorMqtt:
         while True:
             self._monitor.new_data_event.wait()
             timestamp, co2, temperature = self._monitor.get_data()
+            isotime = datetime.fromtimestamp(int(timestamp), tz=timezone.utc).isoformat().replace("+00:00", "Z")
             self._mqtt_client.publish(f'{self.name}/co2', co2, retain=True)
             self._mqtt_client.publish(
-                f'{self.name}/temperature', temperature, retain=True
+                f'{self.name}/temperature', round(temperature, ndigits=2), retain=True
             )
-            self._mqtt_client.publish(f'{self.name}/timestamp', timestamp, retain=True)
+            self._mqtt_client.publish(f'{self.name}/timestamp', isotime, retain=True)
             self._monitor.new_data_event.clear()
+
+    def stop(self):
+        self._monitor.stop()
+        self._mqtt_client.publish(f"{self.name}/online", 'false', retain=True)
+        self._mqtt_client.disconnect()
 
 
 if __name__ == '__main__':
     from config import config
 
     monitor = Co2MonitorMqtt(**config)
-    monitor.loop()
+    try:
+        monitor.loop()
+    except KeyboardInterrupt:
+        monitor.stop()
