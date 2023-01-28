@@ -23,11 +23,11 @@ class Co2MonitorMqtt:
         self._mqtt_client = mqtt.Client(name)
         if mqtt_pw and mqtt_username:
             self._mqtt_client.username_pw_set(username=mqtt_username, password=mqtt_pw)
-        self._mqtt_client.will_set(f"{name}/online", 'false', retain=True)
+        self._mqtt_client.will_set("{}/online".format(name), 'false', retain=True)
         self._mqtt_client.connect(
             host=mqtt_host, port=mqtt_port, keepalive=mqtt_keepalive
         )
-        self._mqtt_client.publish(f"{name}/online", 'true', retain=True)
+        self._mqtt_client.publish("{}/online".format(name), 'true', retain=True)
 
     def loop(self):
         self._monitor.start()
@@ -36,22 +36,22 @@ class Co2MonitorMqtt:
             timestamp, co2, temperature = self._monitor.get_data()
             isotime = datetime.fromtimestamp(int(timestamp), tz=timezone.utc).isoformat().replace("+00:00", "Z")
             try:
-                self._mqtt_client.publish(f'{self.name}/co2', co2, retain=True)
+                self._mqtt_client.publish('{}/co2'.format(self.name), co2, retain=True)
                 self._mqtt_client.publish(
-                    f'{self.name}/temperature', round(temperature, ndigits=2), retain=True
+                    '{}/temperature'.format(self.name), round(temperature, ndigits=2), retain=True
                 )
-                self._mqtt_client.publish(f'{self.name}/timestamp', isotime, retain=True)
+                self._mqtt_client.publish('{}/timestamp'.format(self.name), isotime, retain=True)
             except OSError as e:
                 if e.errno == 101:
                     print("Could not connect to MQTT server, retrying...")
                 else:
-                    print(f"Could not publish to MQTT server: {str(e)}")
+                    print("Could not publish to MQTT server: {}".format(str(e)))
                 time.sleep(self.ERROR_WAIT_TIME)
             self._monitor.new_data_event.clear()
 
     def stop(self):
         self._monitor.stop()
-        self._mqtt_client.publish(f"{self.name}/online", 'false', retain=True)
+        self._mqtt_client.publish("{}/online".format(self.name), 'false', retain=True)
         self._mqtt_client.disconnect()
 
 

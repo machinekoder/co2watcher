@@ -104,7 +104,7 @@ class Co2Monitor:
             self._co2 = co2
             self._temperature = temperature
 
-        print(f"read data {co2} {temperature}")
+        print("read data {} {}".format(co2, temperature))
         self.new_data_event.set()
 
     def _exit(self):
