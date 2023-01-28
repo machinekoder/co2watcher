@@ -1,3 +1,4 @@
+import time
 from datetime import datetime, timezone
 
 import paho.mqtt.client as mqtt
@@ -6,6 +7,8 @@ from co2watcher import Co2Monitor
 
 
 class Co2MonitorMqtt:
+    ERROR_WAIT_TIME = 5.0
+
     def __init__(
         self,
         name='co2monitor',
@@ -32,11 +35,18 @@ class Co2MonitorMqtt:
             self._monitor.new_data_event.wait()
             timestamp, co2, temperature = self._monitor.get_data()
             isotime = datetime.fromtimestamp(int(timestamp), tz=timezone.utc).isoformat().replace("+00:00", "Z")
-            self._mqtt_client.publish(f'{self.name}/co2', co2, retain=True)
-            self._mqtt_client.publish(
-                f'{self.name}/temperature', round(temperature, ndigits=2), retain=True
-            )
-            self._mqtt_client.publish(f'{self.name}/timestamp', isotime, retain=True)
+            try:
+                self._mqtt_client.publish(f'{self.name}/co2', co2, retain=True)
+                self._mqtt_client.publish(
+                    f'{self.name}/temperature', round(temperature, ndigits=2), retain=True
+                )
+                self._mqtt_client.publish(f'{self.name}/timestamp', isotime, retain=True)
+            except OSError as e:
+                if e.errno == 101:
+                    print("Could not connect to MQTT server, retrying...")
+                else:
+                    print(f"Could not publish to MQTT server: {str(e)}")
+                time.sleep(self.ERROR_WAIT_TIME)
             self._monitor.new_data_event.clear()
 
     def stop(self):
