@@ -56,6 +56,9 @@ class Co2Monitor:
                 self._exit()
                 return
 
+            if len(data) < 3:
+                self._logger.debug("Received incomplete data: {}".format(data))
+                continue
             key = data[0]
             value = data[1] << 8 | data[2]
             if key == 0x50:
