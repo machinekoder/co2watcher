@@ -1,4 +1,5 @@
 import time
+import logging
 from threading import Event, Lock, Thread
 
 import hid
@@ -6,6 +7,7 @@ import hid
 
 class Co2Monitor:
     def __init__(self) -> None:
+        self._logger = logging.getLogger(Co2Monitor.__name__)
         self._device = None
 
         self._timestamp = 0
@@ -18,7 +20,7 @@ class Co2Monitor:
         self.new_data_event = Event()
 
     def _open(self):
-        print("Opening device...")
+        self._logger.info("Opening device...")
         vendor_id = 0x04D9
         product_id = 0xA052
         self._device = hid.device()
@@ -48,7 +50,7 @@ class Co2Monitor:
                 self._exit()
                 return
             except OSError as e:
-                print(
+                self._logger.error(
                     'Could not read the device, check that it is correctly plugged:', e
                 )
                 self._exit()
@@ -90,7 +92,7 @@ class Co2Monitor:
                 while not self._stop_event.is_set():
                     self._read_loop()
             except ReadError as e:
-                print(e)
+                self._logger.error(e)
                 time.sleep(3.0)
         self._exit()
 
@@ -104,11 +106,11 @@ class Co2Monitor:
             self._co2 = co2
             self._temperature = temperature
 
-        print("read data {} {}".format(co2, temperature))
+        self._logger.debug("read data {} {}".format(co2, temperature))
         self.new_data_event.set()
 
     def _exit(self):
-        print("Closing device")
+        self._logger.info("Closing device")
         self._device.close()
 
 
