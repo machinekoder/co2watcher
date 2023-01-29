@@ -82,7 +82,7 @@ class Co2MonitorMqtt:
 if __name__ == '__main__':
     from config import config
 
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     monitor = Co2MonitorMqtt(**config)
     try:
         monitor.start()
